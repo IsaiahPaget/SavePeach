@@ -1,33 +1,62 @@
 package main
 
-import "vendor:raylib"
+import rl "vendor:raylib"
 import "core:fmt"
+import "core:math/rand"
 
 main :: proc() {
 
     player := init_player()
     env := init_env()
+    append(&env.barrels, init_barrel())
+    spawn_barrel_buffer := 180
+    spawn_barrel_timer := 0
 
-    raylib.InitWindow(env.window_width, env.window_height, env.name)
-    raylib.SetTargetFPS(env.fps)
+    is_end_game := false
+
+    rl.InitWindow(env.window_width, env.window_height, env.name)
+    rl.SetTargetFPS(env.fps)
 
     // main loop
-    for !raylib.WindowShouldClose() {
-        {
-            raylib.BeginDrawing()
-            defer raylib.EndDrawing()
+    for !rl.WindowShouldClose() {
+        rl.BeginDrawing()
+        defer rl.EndDrawing()
+
+        if is_end_game {
+            rl.DrawText("You lost press space to continue", 190, 200, 64, rl.PINK)
+            if rl.IsKeyPressed(rl.KeyboardKey.SPACE) {
+                player.pos = {100, 850}
+                delete(env.barrels)
+                env.barrels = {}
+                is_end_game = false
+            } 
+        } else {
             
             player_move(&player, env)
+
             for platform in env.platforms {
-                raylib.DrawRectangleV(platform.pos, platform.size, platform.color)
+                rl.DrawRectangleV(platform.pos, platform.size, platform.color)
             }
             for ladder in env.ladders {
-                raylib.DrawRectangleV(ladder.pos, ladder.size, ladder.color)
+                rl.DrawRectangleV(ladder.pos, ladder.size, ladder.color)
             }
-            raylib.DrawRectangleV(player.pos, player.size, player.color)
-            raylib.DrawText("Window Open", 190, 200, 20, raylib.LIGHTGRAY)
-            raylib.ClearBackground(raylib.GRAY)
+            for &barrel, i in env.barrels {
+                rl.DrawCircleV(barrel.pos, barrel.radius, barrel.color)
+                barrel_move(&barrel, env)
+                if objects_are_colliding({barrel.pos, {barrel.radius, barrel.radius}}, {player.pos, player.size}) {
+                    is_end_game = true
+                }
+            }
+            if spawn_barrel_timer == 0 || rand.float32() < .005 {
+                append(&env.barrels, init_barrel())
+                spawn_barrel_timer = spawn_barrel_buffer
+            }
+            rl.DrawRectangleV(player.pos, player.size, player.color)
+            
+            rl.ClearBackground(rl.GRAY)
+            spawn_barrel_timer -= 1
         }
     }
-    raylib.CloseWindow()
+    rl.CloseWindow()
 }
+

@@ -1,21 +1,21 @@
 package main
 
-import "vendor:raylib"
+import rl "vendor:raylib"
 import "core:fmt"
 
 Player :: struct {
-    pos: raylib.Vector2,
-    size: raylib.Vector2,
-    color: raylib.Color,
-    speed: raylib.Vector2,
+    pos: rl.Vector2,
+    size: rl.Vector2,
+    color: rl.Color,
+    speed: rl.Vector2,
     can_jump: bool
 }
 
 init_player :: proc() -> Player {
-    position: raylib.Vector2 = {400, 225}
-    size: raylib.Vector2 = {20, 20}
-    color: raylib.Color = raylib.GREEN
-    speed: raylib.Vector2 = {5, 0}
+    position: rl.Vector2 = {100, 850}
+    size: rl.Vector2 = {20, 20}
+    color: rl.Color = rl.GREEN
+    speed: rl.Vector2 = {5, 0}
 
     player := Player{
         position, 
@@ -34,7 +34,8 @@ Env :: struct {
     name: cstring,
     fps: i32,
     platforms: [dynamic]Platform,
-    ladders: [dynamic]Ladders
+    ladders: [dynamic]Ladder,
+    barrels: [dynamic]Barrel
 }
 
 init_env :: proc() -> Env {
@@ -47,7 +48,8 @@ init_env :: proc() -> Env {
         "game",
         60,
         init_platforms(),
-        init_ladders()
+        init_ladders(),
+        nil
     }
     return env
 }
@@ -62,8 +64,8 @@ init_gravity :: proc() -> Gravity {
 }
 
 Object :: struct {
-    pos: raylib.Vector2,
-    size: raylib.Vector2,
+    pos: rl.Vector2,
+    size: rl.Vector2,
 }
 
 objects_are_colliding :: proc(obj: Object, in_obj: Object) -> bool {
@@ -80,13 +82,13 @@ objects_are_colliding :: proc(obj: Object, in_obj: Object) -> bool {
 
 player_move :: proc(player: ^Player, env: Env) {
 
-    if raylib.IsKeyDown(raylib.KeyboardKey.D) {
+    if rl.IsKeyDown(rl.KeyboardKey.D) {
         player.pos.x += player.speed.x
     }
-    if raylib.IsKeyDown(raylib.KeyboardKey.A) {
+    if rl.IsKeyDown(rl.KeyboardKey.A) {
         player.pos.x -= player.speed.x
     }
-    if raylib.IsKeyPressed(raylib.KeyboardKey.W) && player.can_jump {
+    if rl.IsKeyPressed(rl.KeyboardKey.W) && player.can_jump {
         player.speed.y = 15
         player.can_jump = false
     }
@@ -100,12 +102,13 @@ player_move :: proc(player: ^Player, env: Env) {
     }
     for ladder in env.ladders {
         if objects_are_colliding({player.pos, player.size}, {ladder.pos, ladder.size}) {
-            player.speed.y = 10
+            player.speed.y = 7
             player.can_jump = true
         }
     }
     if player.pos.y >= f32(env.window_height) - player.size.y {
         player.pos.y = f32(env.window_height) - player.size.y
+        player.can_jump = true
     }
     if player.speed.y > 0 {
         player.speed.y -= f32(env.gravity.time)
@@ -116,34 +119,81 @@ player_move :: proc(player: ^Player, env: Env) {
 }
 
 Platform :: struct {
-    pos: raylib.Vector2,
-    size: raylib.Vector2,
-    color: raylib.Color
+    pos: rl.Vector2,
+    size: rl.Vector2,
+    color: rl.Color
 }
 
 
 init_platforms :: proc() -> [dynamic]Platform {
         return {
-            {{200, 100}, {900, 15}, raylib.BROWN},
-            {{450, 200}, {900, 15}, raylib.BROWN},
-            {{200, 300}, {900, 15}, raylib.BROWN},
-            {{450, 400}, {900, 15}, raylib.BROWN},
-            {{200, 500}, {900, 15}, raylib.BROWN},
-            {{450, 600}, {900, 15}, raylib.BROWN},
-            {{200, 700}, {900, 15}, raylib.BROWN},
-            {{450, 800}, {900, 15}, raylib.BROWN},
+            {{200, 100}, {900, 15}, rl.BROWN},
+            {{450, 200}, {900, 15}, rl.BROWN},
+            {{200, 300}, {900, 15}, rl.BROWN},
+            {{450, 400}, {900, 15}, rl.BROWN},
+            {{200, 500}, {900, 15}, rl.BROWN},
+            {{450, 600}, {900, 15}, rl.BROWN},
+            {{200, 700}, {900, 15}, rl.BROWN},
+            {{450, 800}, {900, 15}, rl.BROWN},
         }
 
 }
 
-Ladders :: struct {
-    pos: raylib.Vector2,
-    size: raylib.Vector2,
-    color: raylib.Color
+Ladder :: struct {
+    pos: rl.Vector2,
+    size: rl.Vector2,
+    color: rl.Color
 }
 
-init_ladders :: proc() -> [dynamic]Ladders {
+init_ladders :: proc() -> [dynamic]Ladder {
     return {
-        {{500, 815}, {25, 85}, raylib.ORANGE}
+        {{500, 815}, {25, 85}, rl.ORANGE},
+        {{1000, 715}, {25, 85}, rl.ORANGE},
+        {{600, 615}, {25, 85}, rl.ORANGE},
+        {{900, 515}, {25, 85}, rl.ORANGE},
+        {{500, 415}, {25, 85}, rl.ORANGE},
+        {{1000, 315}, {25, 85}, rl.ORANGE},
+        {{500, 215}, {25, 85}, rl.ORANGE},
+        {{900, 115}, {25, 85}, rl.ORANGE},
+    }
+}
+
+Barrel :: struct {
+    pos: rl.Vector2,
+    radius: f32,
+    color: rl.Color,
+    speed: rl.Vector2
+}
+
+
+init_barrel :: proc() -> Barrel {
+    return {{200,50}, 10, rl.RED, {0, 0}}
+    
+}
+
+barrel_move :: proc(barrel: ^Barrel, env: Env) {
+    if objects_are_colliding({barrel.pos, {barrel.radius, barrel.radius}}, {{0,0},{350, f32(env.window_height) - barrel.radius * 2}}) {
+        barrel.speed.x = 3
+    } else if objects_are_colliding({barrel.pos, {barrel.radius, barrel.radius}}, {{f32(env.window_width) - 350,0},{350, f32(env.window_height)}}) {
+        barrel.speed.x = -3
+    } 
+    barrel.pos.x += barrel.speed.x
+    barrel.pos.y += env.gravity.constant - barrel.speed.y
+    for platform in env.platforms {
+        if objects_are_colliding({barrel.pos, {barrel.radius, barrel.radius}}, {platform.pos, platform.size}) {
+            barrel.pos.y = platform.pos.y - barrel.radius
+        }
+    }
+    if barrel.pos.y >= f32(env.window_height) - barrel.radius {
+        barrel.pos.y = f32(env.window_height) - barrel.radius
+    }
+    if barrel.speed.y > 0 {
+        barrel.speed.y -= f32(env.gravity.time)
+    } else {
+        barrel.speed.y = 0
+    }
+    if barrel.pos.x <= 0 - barrel.radius {
+        barrel.pos.y = -barrel.radius    
+        barrel.pos.x = 50    
     }
 }
