@@ -3,18 +3,20 @@ package main
 import rl "vendor:raylib"
 import "core:fmt"
 
-GRAVITY_CONSTANT :: 2000
+BARREL_SPEED :: 400
+
+GRAVITY_CONSTANT :: 1500
 PLAYER_MOVE_SPEED :: 400
 PLAYER_JUMP_SPEED :: 400
 PLAYER_LADDER_SPEED :: 200
 
 
 Player :: struct {
-    pos: rl.Vector2,
-    size: rl.Vector2,
-    color: rl.Color,
-    velocity: rl.Vector2,
-    can_jump: bool
+    pos:        rl.Vector2,
+    size:       rl.Vector2,
+    color:      rl.Color,
+    velocity:   rl.Vector2,
+    can_jump:   bool
 }
 
 init_player :: proc() -> Player {
@@ -34,11 +36,12 @@ init_player :: proc() -> Player {
 }
 
 Env :: struct {
-    name: cstring,
-    fps: i32,
-    platforms: [dynamic]Platform,
-    ladders: [dynamic]Ladder,
-    barrels: [dynamic]Barrel
+    name:       cstring,
+    fps:        i32,
+    platforms:  [dynamic]Platform,
+    ladders:    [dynamic]Ladder,
+    barrels:    [dynamic]Barrel,
+    flag:       Flag
 }
 
 init_env :: proc() -> Env {
@@ -49,24 +52,17 @@ init_env :: proc() -> Env {
         60,
         {},
         {},
-        nil
+        nil,
+        {}
     }
     return env
 }
 
-Gravity :: struct {
-    constant: f32,
-    time: int,
+Flag :: struct {
+    rect:   rl.Rectangle,
+    color:  rl.Color,
 }
 
-init_gravity :: proc() -> Gravity {
-    return Gravity{5, 1}
-}
-
-Object :: struct {
-    pos: rl.Vector2,
-    size: rl.Vector2,
-}
 
 player_move :: proc(player: ^Player, env: Env) {
 
@@ -117,62 +113,33 @@ player_move :: proc(player: ^Player, env: Env) {
 }
 
 Platform :: struct {
-    pos: rl.Vector2,
-    size: rl.Vector2,
-    color: rl.Color
-}
-
-
-init_platforms :: proc() -> [dynamic]Platform {
-        return {
-            {{200, 100}, {900, 15}, rl.BROWN},
-            {{450, 200}, {900, 15}, rl.BROWN},
-            {{200, 300}, {900, 15}, rl.BROWN},
-            {{450, 400}, {900, 15}, rl.BROWN},
-            {{200, 500}, {900, 15}, rl.BROWN},
-            {{450, 600}, {900, 15}, rl.BROWN},
-            {{200, 700}, {900, 15}, rl.BROWN},
-            {{450, 800}, {900, 15}, rl.BROWN},
-        }
+    pos:    rl.Vector2,
+    size:   rl.Vector2,
+    color:  rl.Color
 }
 
 Ladder :: struct {
-    pos: rl.Vector2,
-    size: rl.Vector2,
-    color: rl.Color
+    pos:    rl.Vector2,
+    size:   rl.Vector2,
+    color:  rl.Color
 }
-
-init_ladders :: proc() -> [dynamic]Ladder {
-    return {
-        {{500, 815}, {25, 85}, rl.ORANGE},
-        {{1000, 715}, {25, 85}, rl.ORANGE},
-        {{600, 615}, {25, 85}, rl.ORANGE},
-        {{900, 515}, {25, 85}, rl.ORANGE},
-        {{500, 415}, {25, 85}, rl.ORANGE},
-        {{1000, 315}, {25, 85}, rl.ORANGE},
-        {{500, 215}, {25, 85}, rl.ORANGE},
-        {{900, 115}, {25, 85}, rl.ORANGE},
-    }
-}
-
-BARREL_SPEED :: 200
 
 Barrel :: struct {
-    pos: rl.Vector2,
-    radius: f32,
-    color: rl.Color,
-    velocity: rl.Vector2
+    pos:        rl.Vector2,
+    radius:     f32,
+    color:      rl.Color,
+    velocity:   rl.Vector2
 }
 
 
 init_barrel :: proc() -> Barrel {
-    barrel := Barrel {{200,50}, BLOCK_SIZE / 2, rl.RED, {0, 0}}
+    barrel := Barrel {{100,50}, BLOCK_SIZE / 2, rl.RED, {0, 0}}
     return barrel
 }
 
 barrel_move :: proc(barrel: ^Barrel, env: Env) {
-    left_rect := rl.Rectangle {0, 0, 350, f32(rl.GetScreenWidth()) - barrel.radius}
-    right_rect := rl.Rectangle {f32(rl.GetScreenWidth()) - 350, 0, 350, f32(rl.GetScreenHeight())}
+    left_rect := rl.Rectangle {0, 0, 150, f32(rl.GetScreenHeight()) - barrel.radius * 3} // 3 because 2 wasn't enough :(
+    right_rect := rl.Rectangle {f32(rl.GetScreenWidth()) - 150, 0, 150, f32(rl.GetScreenHeight())}
 
     if rl.CheckCollisionCircleRec(barrel.pos, barrel.radius, left_rect) {
         barrel.velocity.x = BARREL_SPEED
