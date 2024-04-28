@@ -3,18 +3,50 @@ package main
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:math/rand"
+import "core:mem"
 
 main :: proc() {
+    // memory leaks tracking
+    when ODIN_DEBUG {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        context.allocator = mem.tracking_allocator(&track)
+        defer {
+            if len(track.allocation_map) == 0 {
+                fmt.println("no leaks :)")
+            }
+            if len(track.allocation_map) > 0 {
+                fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+                for _, entry in track.allocation_map {
+                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                }
+            }
+            if len(track.bad_free_array) > 0 {
+                fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+                for entry in track.bad_free_array {
+                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
 
     player := init_player()
+
     env := init_env()
-    append(&env.barrels, init_barrel())
+    defer delete(env.barrels)
+    defer delete(env.platforms)
+    defer delete(env.ladders)
+
+    barrel := init_barrel()
+    append(&env.barrels, barrel)
     spawn_barrel_buffer := 180
     spawn_barrel_timer := 0
 
+    init_map(&env, &player)
     is_end_game := false
 
-    rl.InitWindow(env.window_width, env.window_height, env.name)
+    rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, env.name)
     rl.SetTargetFPS(env.fps)
 
     // main loop
@@ -24,10 +56,9 @@ main :: proc() {
 
         if is_end_game {
             rl.DrawText("You lost press space to continue", 190, 200, 64, rl.PINK)
-            if rl.IsKeyPressed(rl.KeyboardKey.SPACE) {
+            if rl.IsKeyPressed(.SPACE) {
                 player.pos = {100, 850}
-                delete(env.barrels)
-                env.barrels = {}
+                clear(&env.barrels)
                 is_end_game = false
             } 
         } else {
@@ -43,7 +74,9 @@ main :: proc() {
             for &barrel, i in env.barrels {
                 rl.DrawCircleV(barrel.pos, barrel.radius, barrel.color)
                 barrel_move(&barrel, env)
-                if objects_are_colliding({barrel.pos, {barrel.radius, barrel.radius}}, {player.pos, player.size}) {
+                player_rect := rl.Rectangle {player.pos.x, player.pos.y, player.size.x, player.size.y}
+                barrel_rect := rl.Rectangle {barrel.pos.x, barrel.pos.y, barrel.radius, barrel.radius}
+                if rl.CheckCollisionRecs(barrel_rect, player_rect){
                     is_end_game = true
                 }
             }
