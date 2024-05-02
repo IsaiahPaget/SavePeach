@@ -8,7 +8,8 @@ import "core:mem"
 BARREL_SPAWN_RAND :: .005
 
 reset_game :: proc(env: ^Env, player: ^Player) {
-    player.pos = {100, 850}
+    player.collider.x = 100 
+    player.collider.y = f32(rl.GetScreenHeight()) - player.collider.height
     clear(&env.barrels)
 }
 
@@ -38,6 +39,7 @@ main :: proc() {
         }
     }
 
+    rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Save Peach")
     player := init_player()
 
     env := init_env()
@@ -54,8 +56,7 @@ main :: proc() {
     is_end_game := false
     is_win_game := false
 
-    rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, env.name)
-    rl.SetTargetFPS(env.fps)
+    rl.SetTargetFPS(60)
 
     // main loop
     for !rl.WindowShouldClose() {
@@ -77,7 +78,6 @@ main :: proc() {
         } else {
             
             player_move(&player, env)
-            player_rect := rl.Rectangle {player.pos.x, player.pos.y, player.size.x, player.size.y}
 
             for platform in env.platforms {
                 rl.DrawRectangleV(platform.pos, platform.size, platform.color)
@@ -87,20 +87,23 @@ main :: proc() {
             }
             for &barrel, i in env.barrels {
                 barrel_move(&barrel, env)
-                if rl.CheckCollisionCircleRec(barrel.pos, barrel.radius, player_rect){
+                if rl.CheckCollisionCircleRec(barrel.pos, barrel.radius, player.collider){
                     is_end_game = true
                 }
                 rl.DrawCircleV(barrel.pos, barrel.radius, barrel.color)
             }
 
-            if rl.CheckCollisionRecs(player_rect, env.flag.rect) {
+            if rl.CheckCollisionRecs(player.collider, env.flag.rect) {
                 is_win_game = true
             }
             if spawn_barrel_timer == 0 || rand.float32() < BARREL_SPAWN_RAND {
                 append(&env.barrels, init_barrel())
                 spawn_barrel_timer = spawn_barrel_buffer
             }
-            rl.DrawRectangleV(player.pos, player.size, player.color)
+            draw(&player, &env)
+
+            // rl.DrawTextureV(player_idle_texture, {player.collider.x, player.collider.y}, rl.WHITE)
+            // rl.DrawRectangleV(player.pos, player.size, player.color)
             rl.DrawRectangleRec(env.flag.rect, env.flag.color)
             
             rl.ClearBackground(rl.GRAY)
