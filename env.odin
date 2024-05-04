@@ -72,16 +72,21 @@ player_move :: proc(player: ^Player, env: Env) {
 
     if rl.IsKeyDown(.D) {
         player.velocity.x = PLAYER_MOVE_SPEED
-        change_animation(player, .RUN)
+        if player.animation.name != .RUN {
+            change_animation(player, .RUN)
+        }
     }
     else if rl.IsKeyDown(.A) {
         player.velocity.x = -PLAYER_MOVE_SPEED
-        change_animation(player, .RUN)
-        player.collider.width *= -1
+        if player.animation.name != .RUN {
+            change_animation(player, .RUN)
+        }
     }
     else {
         player.velocity.x = 0
-        change_animation(player, .IDLE)
+        if player.animation.name != .IDLE {
+            change_animation(player, .IDLE)
+        }
     }
 
     if player.velocity.y < GRAVITY_CONSTANT {
